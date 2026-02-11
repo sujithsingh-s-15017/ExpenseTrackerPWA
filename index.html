@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Expense Tracker</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Track your daily expenses and income with ease">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Expenses">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container mt-3">
+        <div class="row mb-4">
+            <div class="col-6">
+                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#transactionModal">Add Transaction</button>
+            </div>
+            <div class="col-4 ps-0">
+                <button type="button" class="btn btn-success w-100" onclick="exportTransactions()">Export</button>
+            </div>
+            <div class="col-2 ps-0">
+                <button id="filter-btn" type="button" class="btn btn-outline-primary w-100 px-1" onclick="toggleFilter()">All</button>
+            </div>
+        </div>
+        <div id="transaction-log"></div>
+        <div class="mt-3 d-grid">
+            <button id="clear-transaction-btn" class="btn btn-danger d-none" data-bs-toggle="modal" data-bs-target="#clear-confirmation-modal">Clear Transactions</button>
+        </div>
+    </div>
+
+    <!-- Add transaction modal -->
+    <div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="transactionModalLabel">Add Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-4">
+                            <input type="date" id="add-transaction-date" class="form-control">
+                        </div>
+                        <div class="mb-4">
+                            <select id="add-transaction-account" class="form-select">
+                                <option value="Bank" selected>Bank</option>
+                                <option value="Expense">Expense</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Box">Box</option>
+                                <option value="Mom">Mom</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 input-group">
+                            <select id="add-transaction-action" class="form-select w-25 ps-2">
+                                <option value="credit">From</option>
+                                <option value="debit" selected>To</option>
+                            </select>
+                            <input type="text" id="add-transaction-description" class="form-control w-75"/>
+                        </div>
+                        <div class="mb-4 input-group">
+                            <span class="input-group-text" id="basic-addon1">&#8377;</span>
+                            <input type="number" id="add-transaction-amount" class="form-control">
+                        </div>
+                        <div class="mb-4">
+                            <input type="text" id="add-transaction-comments" class="form-control" placeholder="Comments"/>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-primary" onclick="addTransaction();window.location.reload()">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update transaction modal-->
+    <div class="modal fade" id="update-transaction-modal" tabindex="-1" aria-labelledby="update-transaction-modal" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <input type="hidden" id="update-transaction-id">
+                        <div class="mb-4">
+                            <input type="date" id="update-transaction-date" class="form-control">
+                        </div>
+                        <div class="mb-4">
+                            <select id="update-transaction-account" class="form-select">
+                                <option value="Bank">Bank</option>
+                                <option value="Expense">Expense</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Box">Box</option>
+                                <option value="Mom">Mom</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 input-group">
+                            <select id="update-transaction-action" class="form-select w-25 ps-2">
+                                <option value="credit">From</option>
+                                <option value="debit">To</option>
+                            </select>
+                            <input type="text" id="update-transaction-description" class="form-control w-75"/>
+                        </div>
+                        <div class="mb-4 input-group">
+                            <span class="input-group-text" id="basic-addon2">&#8377;</span>
+                            <input type="number" id="update-transaction-amount" class="form-control">
+                        </div>
+                        <div class="mb-4">
+                            <input type="text" id="update-transaction-comments" class="form-control" placeholder="Comments"/>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary px-4" onclick="updateTransaction();window.location.reload()">Save</button>
+                            <button type="button" class="btn btn-danger px-4" onclick="showDeleteConfirmation()">Delete</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="delete-confirmation-modal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmationModalLabel">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this transaction?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteTransaction()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Transactions Confirmation Modal -->
+    <div class="modal fade" id="clear-confirmation-modal" tabindex="-1" aria-labelledby="clearConfirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clearConfirmationModalLabel">Confirm Clear All</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to clear all the transactions? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="clearTransactions();window.location.reload()">Clear All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+<script>
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then((registration) => {
+                    console.log('Service Worker registered successfully:', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        });
+    }
+
+    $(document).ready(async () => {
+        $("#transactionModal").on("shown.bs.modal", () => {
+            $("#add-transaction-date").val(new Date().toISOString().split('T')[0]);
+        });
+    
+        await initDB();
+        let transactions = await fetchTransactions();
+        showTransactions(transactions);
+    });
+    
+    async function openUpdateTransactionModal(element) {
+        let transactionId = parseInt($(element).attr("id").split('-')[1]);
+        let transaction = await fetchTransactionById(transactionId);
+        $("#update-transaction-id").val(transaction.id);
+        $("#update-transaction-date").val(transaction.date);
+        $("#update-transaction-account").val(transaction.account);
+        $("#update-transaction-action").val(transaction.action);
+        $("#update-transaction-description").val(transaction.description);
+        $("#update-transaction-amount").val(transaction.amount);
+        $("#update-transaction-comments").val(transaction.comments);
+        new bootstrap.Modal($("#update-transaction-modal")).show();
+    }
+    
+    function showTransactions(transactions) {
+        transactions = transactions.reduce((map, transaction) => {
+            if(!map[transaction.date]) {
+                map[transaction.date] = [];
+            }
+            map[transaction.date].push(transaction);
+            return map;
+        }, {});
+    
+        let transactionDates = Object.keys(transactions).sort((a, b) => { return new Date(b) - new Date(a)});
+    
+        let html = "";
+        transactionDates.forEach((date) => {
+            html += `<div class="mt-3 card">`;
+            html += getDateHeader(date);
+            html += `<ul class="list-group list-group-flush">`;
+            let transactionLogs = [];
+            transactions[date].forEach((transaction) => {
+                transactionLogs.push(createTransactionLog(transaction));
+            });
+            html += transactionLogs.join("");
+            html += "</ul></div>"
+        });
+        $("#transaction-log").html(html);
+        $("#clear-transaction-btn").removeClass("d-none");
+    }
+    
+    function getDateHeader(date) {
+        date = new Intl.DateTimeFormat("en-IN", { "day": "2-digit", "month": "short", "year": "numeric"}).format(new Date(date));
+        return `<h6 class="card-header">${date}</h6>`;
+    }
+    
+    function createTransactionLog(transaction) {
+        let accountWithComment = transaction.account;
+        if (transaction.comments) {
+            accountWithComment += ` - ${transaction.comments}`;
+        }
+        let action = (transaction.action === "debit") ? "To" : "From";
+        let actionClass = (transaction.action === "debit") ? "text-danger" : "text-success";
+        let html = `<li id="transaction-${transaction.id}" class="list-group-item d-flex" onclick="openUpdateTransactionModal(this)">
+                        <div class="flex-fill">
+                            <div>${action} ${transaction.description}</div>
+                            <div class="text-secondary fw-light">${accountWithComment}</div>
+                        </div>
+                        <div class="flex-fill text-end ${actionClass}">
+                            <h6>&#8377;${transaction.amount}</h6>
+                        </div>
+                    </li>`;
+        return html;
+    }
+    
+    function showDeleteConfirmation() {
+        $("#update-transaction-modal").modal("hide");
+        $("#delete-confirmation-modal").modal("show");
+    }
+
+    async function toggleFilter() {
+        if ($("#filter-btn").hasClass("active")) {
+            $("#filter-btn").html("All");
+            let transactions = await fetchTransactions();
+            showTransactions(transactions);
+        } else {
+            $("#filter-btn").html("Bank");
+            let transactions = await fetchTransactions();
+            showTransactions(transactions.filter(transaction => transaction.account === 'Bank'));
+        }
+        new bootstrap.Button($("#filter-btn")).toggle();
+    }
+
+    var db;
+
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            let openRequest = indexedDB.open("expenseTracker", 1);
+            openRequest.onupgradeneeded = function (event) {
+                openRequest.result.createObjectStore("transactions", { keyPath: 'id', autoIncrement: true })
+            }
+            openRequest.onerror = function() {
+                console.error("Error", openRequest.error);
+                alert("Something went wrong while connecting to the database!");
+                reject(openRequest.error);
+            };
+            openRequest.onsuccess = function() {
+                db = openRequest.result;
+                resolve();
+            };
+        });
+    }
+    
+    function addTransaction() {
+        let transaction = {
+            "date": $("#add-transaction-date").val(),
+            "account": $("#add-transaction-account").val(),
+            "action": $("#add-transaction-action").val(),
+            "amount": parseFloat($("#add-transaction-amount").val()),
+            "description": $("#add-transaction-description").val(),
+            "comments": $("#add-transaction-comments").val()
+        };
+        let request = db.transaction("transactions", "readwrite").objectStore("transactions").add(transaction);
+        request.onsuccess = function () {
+            $("#transactionModal").modal("hide");
+        }
+        request.onerror = function () {
+            console.error(request.error);
+            alert("Something went wrong!");
+        }
+    }
+    
+    function fetchTransactions() {
+        return new Promise((resolve, reject) => {
+            let request = db.transaction("transactions", "readonly").objectStore("transactions").getAll();
+            request.onsuccess = function () {
+                resolve(request.result.reverse());
+            }
+            request.onerror = function () {
+                console.error(request.error);
+                alert("Something went wrong!");
+                reject(request.error);
+            }
+        });
+    }
+    
+    function fetchTransactionById(id) {
+        return new Promise((resolve, reject) => {
+            let request = db.transaction("transactions", "readonly").objectStore("transactions").get(id);
+            request.onsuccess = function () {
+                resolve(request.result);
+            }
+            request.onerror = function () {
+                console.error(request.error);
+                alert("Something went wrong!");
+                reject(request.error);
+            }
+        });
+    }
+    
+    function updateTransaction() {
+        let transaction = {
+            id: parseInt($("#update-transaction-id").val()),
+            date: $("#update-transaction-date").val(),
+            account: $("#update-transaction-account").val(),
+            action: $("#update-transaction-action").val(),
+            amount: parseFloat($("#update-transaction-amount").val()),
+            description: $("#update-transaction-description").val(),
+            comments: $("#update-transaction-comments").val()
+        };
+        let request = db.transaction("transactions", "readwrite").objectStore("transactions").put(transaction);
+        request.onsuccess = function() {
+            $("#update-transaction-modal").modal("hide");
+        };
+        request.onerror = function() {
+            console.error("Error updating transaction:", request.error);
+            alert("Something went wrong while updating the transaction!");
+        };
+    }
+    
+    function deleteTransaction() {
+        let transactionId = parseInt($("#update-transaction-id").val());
+        let request = db.transaction("transactions", "readwrite").objectStore("transactions").delete(transactionId);
+        request.onsuccess = function() {
+            $("#delete-confirmation-modal").modal("hide");
+            window.location.reload();
+        };
+        request.onerror = function() {
+            console.error("Error deleting transaction:", request.error);
+            alert("Something went wrong while deleting the transaction!");
+        };
+    }
+    
+    function clearTransactions() {
+        db.transaction("transactions", "readwrite").objectStore("transactions").clear();
+    }
+
+    let formatData = {
+        Expense: function (transactions) {
+            let formattedData = [];
+            transactions.forEach((t) => {
+                if (t.action.toLowerCase() === "debit") {
+                    formattedData.push({
+                        "date_d": formatDate(new Date(t.date)),
+                        "description_d": "To " + t.description,
+                        "category_d": "",
+                        "amount_d": t.amount,
+                        "space": "",
+                        "date_c": "",
+                        "description_c": "",
+                        "amount_c": ""
+                    });
+                } else {
+                    formattedData.push({
+                        "date_d": "",
+                        "description_d": "",
+                        "category_d": "",
+                        "amount_d": "",
+                        "space": "",
+                        "date_c": formatDate(new Date(t.date)),
+                        "description_c": "From " + t.description,
+                        "amount_c": t.amount
+                    });
+                }
+            });
+            formattedData.push({
+                "date_d": formatDate(new Date()),
+                "description_d": "Balance"
+            });
+            return formattedData;
+        },
+        Salary: function (transactions) {
+            let formattedData = [];
+            transactions.forEach((t) => {
+                if (t.action.toLowerCase() === "debit") {
+                    formattedData.push({
+                        "date_d": formatDate(new Date(t.date)),
+                        "description_d": "To " + t.description,
+                        "amount_d": t.amount,
+                        "space": "",
+                        "date_c": "",
+                        "description_c": "",
+                        "amount_c": ""
+                    });
+                } else {
+                    formattedData.push({
+                        "date_d": "",
+                        "description_d": "",
+                        "amount_d": "",
+                        "space": "",
+                        "date_c": formatDate(new Date(t.date)),
+                        "description_c": "From " + t.description,
+                        "amount_c": t.amount
+                    });
+                }
+            });
+            formattedData.push({
+                "date_d": formatDate(new Date()),
+                "description_d": "Balance"
+            });
+            return formattedData;
+        },
+        Bank: function (transactions) {
+            let formattedData = [];
+            transactions.forEach((t) => {
+                if (t.action.toLowerCase() === "debit") {
+                    formattedData.push({
+                        "date_d": formatDate(new Date(t.date)),
+                        "description_d": "To " + t.description,
+                        "amount_d": t.amount,
+                        "comment": t.comments,
+                        "space": "",
+                        "date_c": "",
+                        "description_c": "",
+                        "amount_c": ""
+                    });
+                } else {
+                    formattedData.push({
+                        "date_d": "",
+                        "description_d": "",
+                        "amount_d": "",
+                        "comment": "",
+                        "space": "",
+                        "date_c": formatDate(new Date(t.date)),
+                        "description_c": "From " + t.description,
+                        "amount_c": t.amount
+                    });
+                }
+            });
+            formattedData.push({
+                "date_d": formatDate(new Date()),
+                "description_d": "Balance"
+            });
+            return formattedData;
+        },
+        Mom: function (transactions) {
+            return transactions.map(t => ({
+                "Date": formatDate(new Date(t.date)),
+                "Remark": t.description,
+                "Amount": (t.action.toLowerCase() === "credit") ? t.amount : (t.amount * -1),
+            }));
+        },
+        Box: function (transactions) {
+            return transactions.map(t => ({
+                "Date": formatDate(new Date(t.date)),
+                "Remark": t.description,
+                "Amount": (t.action.toLowerCase() === "credit") ? t.amount : (t.amount * -1),
+            }));
+        },
+        Default: function (transactions) {
+            return transactions.map(t => ({
+                Date: formatDate(new Date(t.date)),
+                Description: t.description,
+                Amount: t.amount,
+                Comments: t.comments,
+                Action: t.action
+            }));
+        }
+    }
+    
+    async function exportTransactions() {
+        try {
+            const transactions = await fetchTransactions();
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const accountTransactionMap = transactions.reverse().reduce((acc, transaction) => {
+                if (!acc[transaction.account]) {
+                    acc[transaction.account] = [];
+                }
+                acc[transaction.account].push(transaction);
+                return acc;
+            }, {});
+            const accountOrder = ["Expense", "Salary", "Bank", "Mom", "Box"];
+            const workbook = XLSX.utils.book_new();
+            for (const account of accountOrder) {
+                const transactions = (accountTransactionMap[account]) ? accountTransactionMap[account] : [];
+                const formattedData = formatData[account] ? formatData[account](transactions) : formatData["Default"](transactions);
+                const worksheet = XLSX.utils.json_to_sheet(formattedData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, account);
+            }
+            XLSX.writeFile(workbook, 'Transactions.xlsx');
+        } catch (error) {
+            console.error("Error exporting transactions:", error);
+            alert("Failed to export transactions.");
+        }
+    }
+    
+    function formatDate(date) {
+        return new Intl.DateTimeFormat('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        }).format(date);
+    }
+</script>
+</html>
