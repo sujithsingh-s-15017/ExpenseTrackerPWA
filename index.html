@@ -52,7 +52,7 @@
                             <input type="date" id="add-transaction-date" class="form-control">
                         </div>
                         <div class="mb-4">
-                            <select id="add-transaction-account", class="form-select">
+                            <select id="add-transaction-account" class="form-select">
                                 <option value="Bank" selected>Bank</option>
                                 <option value="Expense">Expense</option>
                                 <option value="Salary">Salary</option>
@@ -98,7 +98,7 @@
                             <input type="date" id="update-transaction-date" class="form-control">
                         </div>
                         <div class="mb-4">
-                            <select id="update-transaction-account", class="form-select">
+                            <select id="update-transaction-account" class="form-select">
                                 <option value="Bank">Bank</option>
                                 <option value="Expense">Expense</option>
                                 <option value="Salary">Salary</option>
@@ -281,7 +281,7 @@
         return new Promise((resolve, reject) => {
             let openRequest = indexedDB.open("expenseTracker", 1);
             openRequest.onupgradeneeded = function (event) {
-                openRequest.result.createObjectStore("transactions", { keyPath: 'id', autoIncrement: true})
+                openRequest.result.createObjectStore("transactions", { keyPath: 'id', autoIncrement: true })
             }
             openRequest.onerror = function() {
                 console.error("Error", openRequest.error);
@@ -383,7 +383,7 @@
         Expense: function (transactions) {
             let formattedData = [];
             transactions.forEach((t) => {
-                if (t.action.toLowerCase() == "debit") {
+                if (t.action.toLowerCase() === "debit") {
                     formattedData.push({
                         "date_d": formatDate(new Date(t.date)),
                         "description_d": "To " + t.description,
@@ -416,7 +416,7 @@
         Salary: function (transactions) {
             let formattedData = [];
             transactions.forEach((t) => {
-                if (t.action.toLowerCase() == "debit") {
+                if (t.action.toLowerCase() === "debit") {
                     formattedData.push({
                         "date_d": formatDate(new Date(t.date)),
                         "description_d": "To " + t.description,
@@ -447,7 +447,7 @@
         Bank: function (transactions) {
             let formattedData = [];
             transactions.forEach((t) => {
-                if (t.action.toLowerCase() == "debit") {
+                if (t.action.toLowerCase() === "debit") {
                     formattedData.push({
                         "date_d": formatDate(new Date(t.date)),
                         "description_d": "To " + t.description,
