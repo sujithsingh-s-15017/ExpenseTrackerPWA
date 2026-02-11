@@ -42,7 +42,8 @@ self.addEventListener('fetch', (event) => {
         
         return fetch(fetchRequest).then((response) => {
           // Check if valid response
-          if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
+          // Allow basic, cors, and opaque responses for caching
+          if (!response || (response.status !== 200 && response.type !== 'opaque')) {
             return response;
           }
           
