@@ -22,20 +22,24 @@
 <body>
     <div class="container mt-3">
         <div class="row mb-4">
-            <div class="col-6">
+            <div class="col-9">
                 <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#transactionModal">Add Transaction</button>
-            </div>
-            <div class="col-4 ps-0">
-                <button type="button" class="btn btn-success w-100" onclick="exportTransactions()">Export</button>
             </div>
             <div class="col-2 ps-0">
                 <button id="filter-btn" type="button" class="btn btn-outline-primary w-100 px-1" onclick="toggleFilter()">All</button>
             </div>
+            <div class="col-1 ps-0">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary w-100 px-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">&#8942;</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#" onclick="exportTransactions();return false;">Export</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#clear-confirmation-modal">Clear Transactions</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="openBalanceModal();return false;">View Balances</a></li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div id="transaction-log"></div>
-        <div class="mt-3 d-grid">
-            <button id="clear-transaction-btn" class="btn btn-danger d-none" data-bs-toggle="modal" data-bs-target="#clear-confirmation-modal">Clear Transactions</button>
-        </div>
     </div>
 
     <!-- Add transaction modal -->
@@ -167,6 +171,59 @@
             </div>
         </div>
     </div>
+    <!-- Balance Modal -->
+    <div class="modal fade" id="balance-modal" tabindex="-1" aria-labelledby="balanceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="balanceModalLabel">Account Balances</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Opening Balance (&#8377;)</th>
+                                <th>Current Balance (&#8377;)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balance-table-body">
+                            <tr data-account="Bank">
+                                <td>Bank</td>
+                                <td><input type="number" class="form-control form-control-sm opening-balance-input" data-account="Bank" value="0"></td>
+                                <td class="current-balance fw-semibold" data-account="Bank">0</td>
+                            </tr>
+                            <tr data-account="Expense">
+                                <td>Expense</td>
+                                <td><input type="number" class="form-control form-control-sm opening-balance-input" data-account="Expense" value="0"></td>
+                                <td class="current-balance fw-semibold" data-account="Expense">0</td>
+                            </tr>
+                            <tr data-account="Salary">
+                                <td>Salary</td>
+                                <td><input type="number" class="form-control form-control-sm opening-balance-input" data-account="Salary" value="0"></td>
+                                <td class="current-balance fw-semibold" data-account="Salary">0</td>
+                            </tr>
+                            <tr data-account="Box">
+                                <td>Box</td>
+                                <td><input type="number" class="form-control form-control-sm opening-balance-input" data-account="Box" value="0"></td>
+                                <td class="current-balance fw-semibold" data-account="Box">0</td>
+                            </tr>
+                            <tr data-account="Mom">
+                                <td>Mom</td>
+                                <td><input type="number" class="form-control form-control-sm opening-balance-input" data-account="Mom" value="0"></td>
+                                <td class="current-balance fw-semibold" data-account="Mom">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveOpeningBalances()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </body>
 <script>
@@ -230,7 +287,6 @@
             html += "</ul></div>"
         });
         $("#transaction-log").html(html);
-        $("#clear-transaction-btn").removeClass("d-none");
     }
     
     function getDateHeader(date) {
@@ -279,9 +335,15 @@
 
     function initDB() {
         return new Promise((resolve, reject) => {
-            let openRequest = indexedDB.open("expenseTracker", 1);
+            let openRequest = indexedDB.open("expenseTracker", 2);
             openRequest.onupgradeneeded = function (event) {
-                openRequest.result.createObjectStore("transactions", { keyPath: 'id', autoIncrement: true })
+                let db = openRequest.result;
+                if (!db.objectStoreNames.contains("transactions")) {
+                    db.createObjectStore("transactions", { keyPath: 'id', autoIncrement: true });
+                }
+                if (!db.objectStoreNames.contains("accountBalances")) {
+                    db.createObjectStore("accountBalances", { keyPath: 'account' });
+                }
             }
             openRequest.onerror = function() {
                 console.error("Error", openRequest.error);
@@ -528,6 +590,62 @@
         }
     }
     
+    function fetchOpeningBalances() {
+        return new Promise((resolve, reject) => {
+            let request = db.transaction("accountBalances", "readonly").objectStore("accountBalances").getAll();
+            request.onsuccess = function () {
+                let result = {};
+                request.result.forEach(r => { result[r.account] = r.balance; });
+                resolve(result);
+            };
+            request.onerror = function () { reject(request.error); };
+        });
+    }
+
+    function saveOpeningBalances() {
+        let store = db.transaction("accountBalances", "readwrite").objectStore("accountBalances");
+        $(".opening-balance-input").each(function () {
+            let account = $(this).data("account");
+            let balance = parseFloat($(this).val()) || 0;
+            store.put({ account, balance });
+        });
+        refreshBalanceModal();
+    }
+
+    function computeBalances(transactions, openingBalances) {
+        let accounts = ["Bank", "Expense", "Salary", "Box", "Mom"];
+        let result = {};
+        accounts.forEach(account => {
+            let opening = openingBalances[account] || 0;
+            let net = transactions
+                .filter(t => t.account === account)
+                .reduce((sum, t) => t.action === "credit" ? sum + t.amount : sum - t.amount, 0);
+            result[account] = opening + net;
+        });
+        return result;
+    }
+
+    async function refreshBalanceModal() {
+        let [transactions, openingBalances] = await Promise.all([fetchTransactions(), fetchOpeningBalances()]);
+        let balances = computeBalances(transactions, openingBalances);
+        $(".opening-balance-input").each(function () {
+            let account = $(this).data("account");
+            $(this).val(openingBalances[account] || 0);
+        });
+        $(".current-balance").each(function () {
+            let account = $(this).data("account");
+            let balance = balances[account];
+            $(this).text(balance.toLocaleString("en-IN"));
+            $(this).removeClass("text-danger text-success");
+            $(this).addClass(balance < 0 ? "text-danger" : "text-success");
+        });
+    }
+
+    async function openBalanceModal() {
+        await refreshBalanceModal();
+        new bootstrap.Modal($("#balance-modal")).show();
+    }
+
     function formatDate(date) {
         return new Intl.DateTimeFormat('en-IN', {
             day: '2-digit',
